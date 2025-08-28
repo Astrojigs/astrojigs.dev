@@ -2,38 +2,173 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Astrojigs • Portfolio</title>
-  <meta name="description" content="Portfolio of Jigar (Astrojigs) — data, ML, GIS, and simulations." />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- (Optional) Favicons – add these files at the repo root when you're ready -->
+  <!-- <link rel="icon" href="/favicon.ico" sizes="any"> -->
+  <!-- <link rel="icon" type="image/png" href="/favicon.png"> -->
+  <!-- <link rel="apple-touch-icon" href="/apple-touch-icon.png"> -->
+  <!-- <link rel="manifest" href="/site.webmanifest"> -->
+
+  <!-- Makes mobile browser UI match the chosen theme -->
+  <meta id="theme-color-meta" name="theme-color" content="#ffffff" />
+
   <style>
-    html, body { height: 100%; margin: 0; background: #f4f3ed; }
-    .wrap { position: relative; height: 100vh; }
-    iframe { width: 100%; height: 100%; border: 0; display: block; }
+    :root { --page-bg: #ffffff; --fg: #111; --chip-bg: rgba(0,0,0,.06); }
+    .dark-page { --page-bg: #0e1117; --fg: #e6edf3; --chip-bg: rgba(255,255,255,.08); }
 
-    /* Hide Streamlit's embed meta bar (host-side element below the iframe) */
-    [data-testid="stEmbeddedAppMetaInfoBar"],
-    [class*="embeddedAppMetaInfoBar_container"] { display: none !important; }
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: var(--page-bg);
+      color: var(--fg);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      transition: background .2s ease, color .2s ease;
+    }
 
-    /* Fallback: a slim mask in case the meta bar renders inside the iframe shell */
-    .mask { position: absolute; left: 0; right: 0; bottom: 0; height: 44px;
-            background: #f4f3ed; pointer-events: none; }
+    /* Full-viewport container for the app */
+    .viewport {
+      position: relative;
+      width: 100%;
+      height: 100svh; /* better on mobile keyboards; falls back to 100vh where unsupported */
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* The embedded Streamlit app */
+    #appFrame {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+      background: transparent;
+    }
+
+    /* Top-right theme toggle */
+    #themeToggle {
+      position: fixed;
+      top: 14px;
+      right: 16px;
+      z-index: 9999;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--chip-bg);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      user-select: none;
+      color: var(--fg);
+    }
+    #themeToggle input { display: none; }
+    #themeToggle label {
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 15px;
+      line-height: 1;
+    }
+    #themeToggle .sun, #themeToggle .moon { font-size: 16px; }
+    #themeToggle .sep {
+      width: 1px; height: 16px;
+      background: currentColor; opacity: .25;
+    }
+
+    /* Small helper: center a minimal title as a fallback while iframe loads */
+    .sr-only {
+      position: absolute !important;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0,0,1px,1px);
+      white-space: nowrap; border: 0;
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <iframe
-      src="https://astrojigs.streamlit.app/?embed=true"
-      allow="clipboard-read; clipboard-write; fullscreen; geolocation"
-      referrerpolicy="strict-origin-when-cross-origin"
-      loading="eager">
-    </iframe>
-    <div class="mask" aria-hidden="true"></div>
+  <!-- Theme toggle -->
+  <div id="themeToggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+    <input type="checkbox" id="toggleCheckbox" />
+    <label for="toggleCheckbox">
+      <span class="sun" aria-hidden="true">☀️</span>
+      <span class="sep" aria-hidden="true"></span>
+      <span class="moon" aria-hidden="true">🌙</span>
+      <span class="sr-only">Toggle dark/light theme</span>
+    </label>
   </div>
 
-  <noscript>
-    <p>JavaScript is required. Open the app directly:
-      <a href="https://astrojigs.streamlit.app/">astrojigs.streamlit.app</a>
-    </p>
-  </noscript>
+  <!-- App container -->
+  <div class="viewport">
+    <iframe
+      id="appFrame"
+      title="Astrojigs Streamlit Portfolio"
+      src="https://astrojigs.streamlit.app/?embed=true"
+      loading="lazy"
+      allow="fullscreen; autoplay"
+      referrerpolicy="strict-origin-when-cross-origin">
+    </iframe>
+    <noscript>
+      Your browser has JavaScript disabled. Please enable it to view the embedded app.
+    </noscript>
+  </div>
+
+  <script>
+    (function () {
+      const iframe = document.getElementById('appFrame');
+      const cb = document.getElementById('toggleCheckbox');
+      const themeMeta = document.getElementById('theme-color-meta');
+
+      function normalizeBase(src) {
+        // Remove any existing embed_options flags; keep everything else (incl. ?embed=true)
+        return (src || '')
+          .replace(/([?&])embed_options=(dark_theme|light_theme)\b&?/g, '$1')
+          .replace(/[?&]$/, ''); // clean trailing separators
+      }
+
+      // Base URL for the iframe
+      const initialSrc = iframe.getAttribute('src') || 'https://astrojigs.streamlit.app/?embed=true';
+      const base = normalizeBase(initialSrc) || 'https://astrojigs.streamlit.app/?embed=true';
+
+      // Load stored theme or fall back to system preference
+      const stored = localStorage.getItem('portfolioTheme'); // 'dark' | 'light' | null
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const startMode = stored || (prefersDark ? 'dark' : 'light');
+
+      function apply(mode, { persist = true, initial = false } = {}) {
+        const isDark = mode === 'dark';
+        document.documentElement.classList.toggle('dark-page', isDark);
+        cb.checked = isDark;
+        if (persist) localStorage.setItem('portfolioTheme', mode);
+
+        // Update browser theme color (mobile address bar)
+        themeMeta && (themeMeta.content = isDark ? '#0e1117' : '#ffffff');
+
+        // Reload iframe with the chosen Streamlit embed option
+        const sep = base.includes('?') ? '&' : '?';
+        const themed = `${base}${sep}embed_options=${isDark ? 'dark_theme' : 'light_theme'}`;
+        if (!initial || iframe.src !== themed) {
+          iframe.src = themed;
+        }
+      }
+
+      // Initialize
+      apply(startMode, { persist: false, initial: true });
+
+      // Toggle handler
+      cb.addEventListener('change', () => apply(cb.checked ? 'dark' : 'light'));
+
+      // Keep in sync with system preference if user hasn't manually chosen yet
+      if (!stored && window.matchMedia) {
+        const mql = window.matchMedia('(prefers-color-scheme: dark)');
+        mql.addEventListener('change', (e) => {
+          if (!localStorage.getItem('portfolioTheme')) {
+            apply(e.matches ? 'dark' : 'light', { persist: false });
+          }
+        });
+      }
+    })();
+  </script>
 </body>
 </html>
