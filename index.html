@@ -11,17 +11,29 @@
   <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
 
-  <!-- Match Streamlit dark background (change if you use a custom theme) -->
+  <!-- Match Streamlit background (change if you use a custom theme) -->
   <meta name="theme-color" content="#f4f3ed">
   <style>
-    :root { --bg: #f4f3ed; } /* ← change this if your Streamlit bg differs */
+    :root { --bg: #f4f3ed; } /* change if your Streamlit bg differs */
     html, body { height: 100%; margin: 0; background: var(--bg); }
-    /* Make the iframe fill the viewport and inherit bg to avoid edge halos */
+    body { overflow: hidden; }
+
+    /* Full-viewport iframe */
     iframe {
       position: fixed; inset: 0;
       width: 100%; height: 100%;
       border: 0; background: var(--bg);
       display: block;
+      z-index: 1;
+    }
+
+    /* Mask bar to hide Streamlit badge at the bottom */
+    .mask-bottom {
+      position: fixed; left: 0; right: 0; bottom: 0;
+      height: calc(48px + env(safe-area-inset-bottom, 0px)); /* tweak 40–56px if needed */
+      background: var(--bg);
+      z-index: 2;
+      pointer-events: none; /* don't block clicks on your app */
     }
   </style>
 </head>
@@ -34,5 +46,8 @@
     allowfullscreen
     loading="eager">
   </iframe>
+
+  <!-- Mask bar to cover the bottom-right "Built with Streamlit" badge -->
+  <div class="mask-bottom" aria-hidden="true"></div>
 </body>
 </html>
