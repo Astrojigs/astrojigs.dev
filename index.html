@@ -19,7 +19,7 @@
     html, body { height: 100%; margin: 0; background: var(--bg); }
     body { overflow: hidden; }
 
-    /* Full-viewport app iframe (scoped to avoid styling the BMC popup iframe) */
+    /* Full-viewport app iframe (scoped so we don't style the BMC popup iframe) */
     .app-frame {
       position: fixed; inset: 0;
       width: 100%; height: 100%;
@@ -37,7 +37,7 @@
       pointer-events: none; /* don't block clicks on your app */
     }
 
-    /* BMC stacking: put the button ABOVE the popup so a second click toggles it closed */
+    /* Stacking: put the BMC button ABOVE the popup so we can toggle it closed */
     #bmc-wbtn { z-index: 2147483647 !important; pointer-events: auto !important; }
     iframe[title="Buy Me a Coffee"] { z-index: 2147483646 !important; }
   </style>
@@ -61,10 +61,45 @@
           src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js"
           data-id="astrojigs2a"
           data-description="Support me on Buy me a coffee!"
-          data-message="Thank you for visiting! Feel free to support me. ☕"
+          data-message="Thank you for visiting! You can buy me a coffee. ☕"
           data-color="#FF813F"
           data-position="Right"
           data-x_margin="18"
           data-y_margin="18"></script>
+
+  <!-- Make the BMC button toggle the popup -->
+  <script>
+    (function () {
+      function enhanceBmcToggle() {
+        const btn = document.getElementById('bmc-wbtn');
+        if (!btn) { setTimeout(enhanceBmcToggle, 300); return; }
+
+        // Capture-phase so we run before the widget's own click handler
+        btn.addEventListener('click', function (e) {
+          const popups = Array.from(document.querySelectorAll('iframe[title="Buy Me a Coffee"]'));
+          const isOpen = popups.length > 0 && popups.some(el => el.style.display !== 'none');
+
+          if (isOpen) {
+            // Stop the widget from trying to "open" again; just close it.
+            e.preventDefault();
+            e.stopImmediatePropagation();
+
+            // Remove all popup iframes (widget will recreate on next open)
+            popups.forEach(el => { try { el.remove(); } catch (_) {} });
+
+            // In case the widget locked scroll, re-enable it
+            document.body.style.overflow = '';
+          }
+          // If not open, let the widget handle the click normally (it will open)
+        }, true);
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', enhanceBmcToggle);
+      } else {
+        enhanceBmcToggle();
+      }
+    })();
+  </script>
 </body>
 </html>
