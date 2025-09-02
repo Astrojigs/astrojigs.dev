@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Astrojigs • Portfolio</title>
 
-  <!-- Favicons (keep your existing paths) -->
+  <!-- Favicons -->
   <link rel="icon" href="/assets/favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16.png">
@@ -13,13 +13,14 @@
 
   <!-- Match Streamlit background (change if you use a custom theme) -->
   <meta name="theme-color" content="#f4f3ed">
+
   <style>
     :root { --bg: #f4f3ed; } /* change if your Streamlit bg differs */
     html, body { height: 100%; margin: 0; background: var(--bg); }
     body { overflow: hidden; }
 
-    /* Full-viewport iframe */
-    iframe {
+    /* Full-viewport app iframe (scoped to avoid styling the BMC popup iframe) */
+    .app-frame {
       position: fixed; inset: 0;
       width: 100%; height: 100%;
       border: 0; background: var(--bg);
@@ -36,24 +37,15 @@
       pointer-events: none; /* don't block clicks on your app */
     }
 
-    /* --- BMC widget fixes: paste BELOW --- */
-    iframe[title="Buy Me a Coffee"] {
-      position: fixed !important;
-      top: 50% !important;
-      left: 50% !important;
-      transform: translate(-50%, -50%) !important;
-      -webkit-transform: translate(-50%, -50%) !important; /* mobile WebKit */
-      z-index: 2147483647 !important; /* above the big app iframe */
-    }
-    #bmc-wbtn {
-      z-index: 2147483646 !important;
-    }
-    /* --- BMC widget fixes: paste ABOVE --- */
+    /* BMC stacking: keep popup above the button (and both above the app iframe) */
+    #bmc-wbtn { z-index: 2147483646 !important; }
+    iframe[title="Buy Me a Coffee"] { z-index: 2147483647 !important; }
   </style>
 </head>
 <body>
   <!-- `?embed=true` hides Streamlit footer & padding in embeds -->
   <iframe
+    class="app-frame"
     title="Astrojigs Portfolio"
     src="https://astrojigs.streamlit.app/?embed=true"
     allow="clipboard-read; clipboard-write; fullscreen; geolocation"
