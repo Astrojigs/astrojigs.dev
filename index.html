@@ -37,9 +37,9 @@
       pointer-events: none; /* don't block clicks on your app */
     }
 
-    /* BMC stacking: keep popup above the button (and both above the app iframe) */
-    #bmc-wbtn { z-index: 2147483646 !important; }
-    iframe[title="Buy Me a Coffee"] { z-index: 2147483647 !important; }
+    /* BMC stacking: put the button ABOVE the popup so a second click toggles it closed */
+    #bmc-wbtn { z-index: 2147483647 !important; pointer-events: auto !important; }
+    iframe[title="Buy Me a Coffee"] { z-index: 2147483646 !important; }
   </style>
 </head>
 <body>
