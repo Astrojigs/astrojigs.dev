@@ -19,7 +19,7 @@
     html, body { height: 100%; margin: 0; background: var(--bg); }
     body { overflow: hidden; }
 
-    /* Full-viewport app iframe (scoped so we don't style the BMC popup iframe) */
+    /* Full-viewport app iframe (scoped so we don't style BMC popup iframe) */
     .app-frame {
       position: fixed; inset: 0;
       width: 100%; height: 100%;
@@ -67,43 +67,94 @@
           data-x_margin="18"
           data-y_margin="18"></script>
 
-  <!-- Make the BMC button truly toggle the popup -->
+  <!-- Make the BMC button toggle the popup reliably -->
   <script>
     (function () {
+      let reinjecting = false;
+
+      function popupIframes() {
+        return Array.from(document.querySelectorAll('iframe[title="Buy Me a Coffee"]'));
+      }
+
       function isPopupVisible() {
-        const frames = document.querySelectorAll('iframe[title="Buy Me a Coffee"]');
-        for (const el of frames) {
+        for (const el of popupIframes()) {
+          const cs = getComputedStyle(el);
+          if (cs.display === 'none' || cs.visibility === 'hidden') continue;
           const r = el.getBoundingClientRect();
-          const v = getComputedStyle(el).visibility;
-          // Consider it "open" only if it actually occupies space and is visible
-          if (r.width > 20 && r.height > 20 && v !== 'hidden') return true;
+          if (r.width > 20 && r.height > 20) return true;
         }
         return false;
       }
 
-      function closePopup() {
-        // Remove all visible popup iframes (widget recreates them on next open)
-        const frames = document.querySelectorAll('iframe[title="Buy Me a Coffee"]');
-        frames.forEach(el => {
-          try { el.remove(); } catch (_) {}
-        });
-        // Just in case the widget altered scroll:
-        document.body.style.overflow = '';
+      function hidePopup() {
+        popupIframes().forEach(el => { el.style.display = 'none'; });
+        document.body.style.overflow = ''; // just in case the widget locked scroll
+      }
+
+      function reinjectWidgetIfNeeded() {
+        if (reinjecting) return;
+        // If the widget didn't open within the window, reinject it.
+        setTimeout(() => {
+          if (isPopupVisible()) return; // it opened fine
+          reinjecting = true;
+
+          // Remove old button (if any) and hidden popups
+          const btn = document.getElementById('bmc-wbtn');
+          if (btn) btn.remove();
+          popupIframes().forEach(el => el.remove());
+
+          // Clone attributes from the existing script (for your ID/message/color/etc.)
+          const old = document.querySelector('script[data-name="BMC-Widget"]');
+          const s = document.createElement('script');
+          s.setAttribute('data-name', 'BMC-Widget');
+          s.setAttribute('data-cfasync', 'false');
+          s.src = 'https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js';
+
+          if (old) {
+            for (const attr of old.attributes) {
+              if (attr.name.startsWith('data-') && attr.name !== 'data-name' && attr.name !== 'src') {
+                s.setAttribute(attr.name, attr.value);
+              }
+            }
+          } else {
+            // Fallback defaults (shouldn't be needed)
+            s.setAttribute('data-id', 'astrojigs2a');
+            s.setAttribute('data-position', 'Right');
+            s.setAttribute('data-color', '#FF813F');
+            s.setAttribute('data-x_margin', '18');
+            s.setAttribute('data-y_margin', '18');
+          }
+
+          s.onload = () => {
+            reinjecting = false;
+            // Re-bind click handler after the new button appears
+            enhanceBmcToggle();
+          };
+
+          document.body.appendChild(s);
+        }, 600); // give the widget ~0.6s to open normally
       }
 
       function enhanceBmcToggle() {
         const btn = document.getElementById('bmc-wbtn');
-        if (!btn) { setTimeout(enhanceBmcToggle, 300); return; }
+        if (!btn) { setTimeout(enhanceBmcToggle, 250); return; }
 
-        // Intercept only when the popup is currently visible
+        // Avoid stacking multiple handlers
+        if (btn._bmcToggleBound) return;
+        btn._bmcToggleBound = true;
+
+        // Capture-phase so we run before the widget's own click handler
         btn.addEventListener('click', function (e) {
           if (isPopupVisible()) {
+            // Close: prevent the widget's "open" action and hide instead
             e.preventDefault();
             e.stopImmediatePropagation();
-            closePopup();
+            hidePopup();
+          } else {
+            // Open: let the widget handle it; then verify it actually opened
+            reinjectWidgetIfNeeded();
           }
-          // If not visible, do nothing: let the widget open it normally
-        }, true); // capture so we run before the widget's own handler
+        }, true);
       }
 
       if (document.readyState === 'loading') {
